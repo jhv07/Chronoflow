@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_pymongo import PyMongo
 from bson import ObjectId
@@ -6,11 +6,18 @@ from datetime import datetime
 import hashlib
 import threading
 import time
+import os
 from werkzeug.security import generate_password_hash, check_password_hash
+
 # MongoDB Connection
-app = Flask(__name__)
-app.config['MONGO_URI'] = 'mongodb://localhost:27017/chronoflow'
-CORS(app)
+app = Flask(__name__, static_folder='static', static_url_path='')
+
+# Use environment variable for MongoDB URI (Render will provide this)
+mongo_uri = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/chronoflow')
+app.config['MONGO_URI'] = mongo_uri
+
+# Enable CORS for all routes
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 mongo = PyMongo(app)
 
@@ -225,6 +232,26 @@ def check_events():
         # Sleep for 60 seconds before checking again
         stop_event_check.wait(60)
 
+# ===== Static File Routes =====
+# List of static file extensions to serve
+STATIC_EXTENSIONS = {'.html', '.css', '.js', '.json', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.woff', '.woff2', '.ttf', '.eot'}
+
+@app.route('/')
+def index():
+    """Serve the main index.html file"""
+    return send_from_directory('.', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    """Serve static files (CSS, JS, manifest, etc.)"""
+    # Only serve if it's a static file or doesn't match API routes
+    if '.' in path:
+        ext = '.' + path.rsplit('.', 1)[1].lower()
+        if ext in STATIC_EXTENSIONS and os.path.exists(path):
+            return send_from_directory('.', path)
+    # Fallback to index.html for client-side routing (SPA)
+    return send_from_directory('.', 'index.html')
+
 # ===== Health Check =====
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -255,14 +282,19 @@ def start_background_checker():
 
 # ===== Startup =====
 if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
+    
     print("\n" + "="*50)
     print("🚀 ChronoFlow Server Starting...")
     print("="*50)
     print(f"Database: {app.config['MONGO_URI']}")
+    print(f"Port: {port}")
+    print(f"Debug: {debug}")
     print("="*50 + "\n")
     
     # Start background thread immediately
     start_background_checker()
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=debug, host='0.0.0.0', port=port)
 

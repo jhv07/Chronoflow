@@ -1,5 +1,9 @@
 // ===== Configuration =====
-const API_BASE_URL = 'http://localhost:5000';
+// Automatically detect API URL based on current hostname
+// In production (Render), use the same origin. In development, use localhost:5000
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:5000' 
+    : window.location.origin;
 
 // ===== State Management =====
 let currentUser = null;

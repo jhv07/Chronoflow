@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: chronoflow
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: MONGO_URI
+        fromDatabase:
+          name: chronoflow-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    healthCheckPath: /health
+
+databases:
+  - name: chronoflow-db
+    plan: free
+    databaseName: chronoflow
+    user: chronoflow
+
